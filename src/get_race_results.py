@@ -9,8 +9,10 @@ from selenium.webdriver.support import expected_conditions as EC
 from webdriver_manager.chrome import ChromeDriverManager
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin
+import requests
 import pandas as pd
-import tabula
+from pathlib import Path
+import camelot
 
 
 def get_rendered_soup(driver, url, wait_condition):
@@ -38,27 +40,41 @@ def get_event_data(event_list):
 def get_vtyc_dataframe(url):
     # read_pdf returns a list of dataframes (one for each page)
     # lattice=True is often better for defined table grids
-    dfs = tabula.read_pdf(url, pages='all', lattice=False, stream=True)
+    # dfs = tabula.read_pdf(url, pages='all', lattice=False, stream=True)
 
-    # Combine pages if the table spans multiple pages
-    full_df = pd.concat(dfs, ignore_index=True)
+    filename = url.split('/')[-1]
+    response = requests.get(url)
+    response.raise_for_status()
 
-    # Cleaning steps:
-    # 1. Drop rows that are completely empty
-    full_df = full_df.dropna(how='all')
+    # Get the directory where the current script file is located
+    script_dir = Path(__file__).parent.parent
+    save_path = script_dir / f"data/{filename}"
 
-    # 2. Rename columns based on the header found in the PDF
-    # Typical columns: Rank, Plate, Name/Team, Intermediate, Time, Points
-    if len(full_df.columns) >= 6:
-        full_df.columns = ['Rank', 'Plate', 'Name_Team', 'Intermediate', 'Time', 'Points']
+    with open(save_path, "wb") as f:
+        f.write(response.content)
 
-    print("VTYC Results DataFrame:")
-    print(full_df.head(10))
-
-    # Optional: Export to CSV
-    # df.to_csv("vtyc_results.csv", index=False)
-
-    return full_df
+    # # Read the PDF using Camelot (Lattice is default, use 'stream' if needed)
+    # tables = camelot.read_pdf(filename, pages='1', flavor='lattice')
+    #
+    # # Combine pages if the table spans multiple pages
+    # full_df = pd.concat(dfs, ignore_index=True)
+    #
+    # # Cleaning steps:
+    # # 1. Drop rows that are completely empty
+    # full_df = full_df.dropna(how='all')
+    #
+    # # 2. Rename columns based on the header found in the PDF
+    # # Typical columns: Rank, Plate, Name/Team, Intermediate, Time, Points
+    # if len(full_df.columns) >= 6:
+    #     full_df.columns = ['Rank', 'Plate', 'Name_Team', 'Intermediate', 'Time', 'Points']
+    #
+    # print("VTYC Results DataFrame:")
+    # print(full_df.head(10))
+    #
+    # # Optional: Export to CSV
+    # # df.to_csv("vtyc_results.csv", index=False)
+    #
+    # return full_df
 
 
 
@@ -130,25 +146,25 @@ def get_bullit_timing_data(event_name, year):
     return results_database
 
 
-def get_vtyc_dataframe(url):
-    # read_pdf returns a list of dataframes (one for each page)
-    # lattice=True is often better for defined table grids
-    print(f'reading {url} ...')
-    dfs = tabula.read_pdf(url, pages='all', lattice=False, stream=True)
-
-    # Combine pages if the table spans multiple pages
-    full_df = pd.concat(dfs, ignore_index=True)
-
-    # Cleaning steps:
-    # 1. Drop rows that are completely empty
-    full_df = full_df.dropna(how='all')
-
-    # 2. Rename columns based on the header found in the PDF
-    # Typical columns: Rank, Plate, Name/Team, Intermediate, Time, Points
-    if len(full_df.columns) >= 6:
-        full_df.columns = ['Rank', 'Plate', 'Name_Team', 'Intermediate', 'Time', 'Points']
-
-    return full_df
+# def get_vtyc_dataframe(url):
+#     # read_pdf returns a list of dataframes (one for each page)
+#     # lattice=True is often better for defined table grids
+#     print(f'reading {url} ...')
+#     dfs = tabula.read_pdf(url, pages='all', lattice=False, stream=True)
+#
+#     # Combine pages if the table spans multiple pages
+#     full_df = pd.concat(dfs, ignore_index=True)
+#
+#     # Cleaning steps:
+#     # 1. Drop rows that are completely empty
+#     full_df = full_df.dropna(how='all')
+#
+#     # 2. Rename columns based on the header found in the PDF
+#     # Typical columns: Rank, Plate, Name/Team, Intermediate, Time, Points
+#     if len(full_df.columns) >= 6:
+#         full_df.columns = ['Rank', 'Plate', 'Name_Team', 'Intermediate', 'Time', 'Points']
+#
+#     return full_df
 
 
 if __name__ == "__main__":
