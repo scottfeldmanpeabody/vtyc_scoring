@@ -13,6 +13,7 @@ import requests
 import pandas as pd
 from pathlib import Path
 import camelot
+import os
 
 
 def get_rendered_soup(driver, url, wait_condition):
@@ -29,15 +30,19 @@ def get_rendered_soup(driver, url, wait_condition):
         return None
 
 
-def get_event_data(event_list):
+def get_event_data(event_name, event_list):
+    print(f"  Gathering results for {event_name} ...")
     event_data = []
+    data_dir = Path(__file__).parent.parent
+    data_dir = data_dir / "data"
     for category in event_list:
-        category_data = get_vtyc_dataframe(category)
+        os.makedirs(f"{data_dir}/{event_name}", exist_ok=True)
+        category_data = download_results(event_name, category)
         event_data.append(category_data)
     return event_data
 
 
-def get_vtyc_dataframe(url):
+def download_results(event_name, url):
     # read_pdf returns a list of dataframes (one for each page)
     # lattice=True is often better for defined table grids
     # dfs = tabula.read_pdf(url, pages='all', lattice=False, stream=True)
@@ -48,7 +53,7 @@ def get_vtyc_dataframe(url):
 
     # Get the directory where the current script file is located
     script_dir = Path(__file__).parent.parent
-    save_path = script_dir / f"data/{filename}"
+    save_path = script_dir / f"data/{event_name}/{filename}"
 
     with open(save_path, "wb") as f:
         f.write(response.content)
@@ -132,10 +137,10 @@ def get_bullit_timing_data(event_name, year):
         # Step 4: Extract data from each event
         results = {}
 
+        print("Getting results ...")
         for event, event_list in results_database.items():
             try:
-                print(f'gathering results for {event} ...')
-                results[event] = get_event_data(event_list)
+                results[event] = get_event_data(event, event_list)
             except Exception as e:
                 print(f'error: {e}')
 
