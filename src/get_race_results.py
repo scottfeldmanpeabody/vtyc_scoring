@@ -29,8 +29,9 @@ def get_rendered_soup(driver, url, wait_condition):
 
 def get_event_data(event_list):
     event_data = []
-    for event in event_list:
-        event_data.append(get_vtyc_dataframe(event))
+    for category in event_list:
+        category_data = get_vtyc_dataframe(category)
+        event_data.append(category_data)
     return event_data
 
 
@@ -51,19 +52,14 @@ def get_vtyc_dataframe(url):
     if len(full_df.columns) >= 6:
         full_df.columns = ['Rank', 'Plate', 'Name_Team', 'Intermediate', 'Time', 'Points']
 
+    print("VTYC Results DataFrame:")
+    print(full_df.head(10))
+
+    # Optional: Export to CSV
+    # df.to_csv("vtyc_results.csv", index=False)
+
     return full_df
 
-
-# Execute and display
-df = get_vtyc_dataframe(pdf_url)
-
-# Display the first few rows
-print("VTYC Results DataFrame:")
-print(df.head(10))
-
-
-# Optional: Export to CSV
-# df.to_csv("vtyc_results.csv", index=False)
 
 
 def get_bullit_timing_data(event_name, year):
@@ -118,7 +114,14 @@ def get_bullit_timing_data(event_name, year):
                 results_database[name] = list(set(cat_links))
 
         # Step 4: Extract data from each event
-        for event, event_list in results_database:
+        results = {}
+
+        for event, event_list in results_database.items():
+            try:
+                print(f'gathering results for {event} ...')
+                results[event] = get_event_data(event_list)
+            except Exception as e:
+                print(f'error: {e}')
 
 
     finally:
@@ -130,6 +133,7 @@ def get_bullit_timing_data(event_name, year):
 def get_vtyc_dataframe(url):
     # read_pdf returns a list of dataframes (one for each page)
     # lattice=True is often better for defined table grids
+    print(f'reading {url} ...')
     dfs = tabula.read_pdf(url, pages='all', lattice=False, stream=True)
 
     # Combine pages if the table spans multiple pages
@@ -147,19 +151,8 @@ def get_vtyc_dataframe(url):
     return full_df
 
 
-# Execute and display
-df = get_vtyc_dataframe(pdf_url)
-
-# Display the first few rows
-print("VTYC Results DataFrame:")
-print(df.head(10))
-
-# Optional: Export to CSV
-# df.to_csv("vtyc_results.csv", index=False)
-
-
 if __name__ == "__main__":
-    data = get_bullitt_timing_data(event_name='VTYC', year=2025)
+    data = get_bullit_timing_data(event_name='VTYC', year=2025)
 
     print("\n--- Final Results ---")
     print(json.dumps(data, indent=4))
