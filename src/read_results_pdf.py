@@ -5,7 +5,7 @@ import pandas as pd
 root_dir = Path(__file__).parent.parent
 
 
-def determine_format(race):
+def _determine_format(race):
     # race format could be determined by the format of the race results
     #  but that's not really worth doing. So hardcode the format
     format_dict = {'Ascutney': 'XC',
@@ -24,7 +24,7 @@ def determine_format(race):
     return format
 
 
-def parse_enduro_stages(df, race, category):
+def _parse_enduro_stages(df, race, category):
     times = df.iloc[:, -1]
     stage_names = df.columns.to_list()[-1]
 
@@ -69,12 +69,20 @@ def parse_enduro_stages(df, race, category):
     return df, stage_names
 
 def import_results_pdf(local_filename, race, gender, category):
-
+    """
+    imports race results from pdf and attempt to process errors
+    #TODO this isn't without error!
+    :param local_filename: path to pdf file with race results
+    :param race: name of race
+    :param gender: gender of results to upload
+    :param category: category of results to upload
+    :return: dataframe of results
+    """
     tables = camelot.read_pdf(local_filename, pages='1', flavor='stream')
 
     df = tables[0].df
 
-    format = determine_format(race)
+    format = _determine_format(race)
 
     if format not in ['XC', 'Enduro']:
         raise(f'Error: Undefined format: {format}')
@@ -86,7 +94,7 @@ def import_results_pdf(local_filename, race, gender, category):
     df = df.drop(df.index[0])
 
     if format == 'Enduro':
-        df, stages = parse_enduro_stages(df, race, category)
+        df, stages = _parse_enduro_stages(df, race, category)
 
     new_columns = ['rank', 'plate', 'name']
     keep_columns = df.columns[3:]
@@ -132,8 +140,13 @@ def import_results_pdf(local_filename, race, gender, category):
     return df
 
 
-def collect_all_category_results(race):
-    dir = root_dir / f'data/{race}'
+def collect_all_category_results(race_dir):
+    """
+    Loops through all categories for a particular rac
+    :param race_dir: directory containing pdfs of race results
+    :return: concatenated dataframe of all results
+    """
+    dir = root_dir / f'data/{race_dir}'
     os.chdir(dir)
     files = os.listdir(dir)
     all_cats = pd.DataFrame()
@@ -147,15 +160,20 @@ def collect_all_category_results(race):
             no_extension = filename.split('.')[0]
             gender = no_extension.split('-')[1]
             cat = no_extension.split('-')[2]
-            this_cat = import_results_pdf(filename, race, gender, cat)
+            this_cat = import_results_pdf(filename, race_dir, gender, cat)
             all_cats = pd.concat([all_cats, this_cat], ignore_index=True)
         except Exception as e:
             print(f"Error with filename {filename}: {e}")
     return all_cats
 
 
-def process_all_races(race_list):
-    for race in race_list:
+def process_all_races(race_dir_list):
+    """
+    lopps through all races and saves concatenated results to csv
+    :param race_dir_list: list of directories containing race results
+    :return: NA just saves pdf
+    """
+    for race in race_dir_list:
         try:
             short_race = race.split(' ')[1]
             print(f'Processing {short_race} ...')
